@@ -1,0 +1,131 @@
+import pygame, sys, math, numpy
+
+pygame.init()
+FPS = 60
+clock = pygame.time.Clock()
+
+class Circle:
+    def __init__(self, radius, position, velocity, mass):
+        self.radius = radius
+        self.position = position
+        self.velocity = velocity
+        self.mass = mass
+
+# Display set up.
+display_width = 1000
+display_height = 600
+screen = pygame.display.set_mode((display_width, display_height))
+
+## EDIT INITIAL CONDITIONS HERE
+# Radius cannot be bigger than half the smaller screen dimension (300)
+# If the velocity is too high, circles will clip through each other.
+
+## CIRCLE1 PARAMETERS
+# r is radius.
+circle1_r = 90
+# vo is original velocity, which remains the same. It is distinct from vi, initial velocity, which changes over time.
+circle1_vo = numpy.array([300, 900])
+# xo is original position.
+circle1_xo = numpy.array([circle1_r, display_height / 2])
+# m is mass.
+circle1_m = 1000
+
+## CIRCLE2 PARAMETERS
+circle2_r = 50
+circle2_vo = numpy.array([-200, 0])
+circle2_xo = numpy.array([display_width - circle2_r, display_height / 2])
+circle2_m= 10
+
+# OTHER PARAMETERS
+gravity = 0
+
+# Negative drag will result in the balls speeding up and eventually breaking the game.
+drag = 0
+# 0 is no effect. Less than 0 is friction, more than 0 is floors that will bounce the balls with more force.
+# Letting a high floor bounce run will likely result in the game breaking eventually.
+floor_bounce = 10
+# END OF EDITABLE INITIAL CONDITIONS
+
+# Defining the two circles.
+circle1 = Circle(circle1_r, circle1_xo, circle1_vo, circle1_m)
+circle2 = Circle(circle2_r, circle2_xo, circle2_vo, circle2_m)
+
+pygame.init()
+pygame.display.set_mode((display_width, display_height))
+
+# Takes position, velocity, and radius and returns position and velocity after collision.
+def circle_collision_with_boundaries(xi, vi, r, floor_bounce):
+    if xi[0] <= r:
+        vi[0] = -1 * vi[0]
+        xi[0] = r
+    elif xi[0] >= display_width - r:
+        vi[0] = -1 * vi[0]
+        xi[0] = display_width - r
+    if xi[1] <= r:
+        vi[1] = -1 * vi[1] * (1 + floor_bounce / FPS)
+        xi[1] = r
+
+    elif xi[1] >= display_height - r:
+        vi[1] = -1 * vi[1]
+        xi[1] = display_height - r
+    return [xi, vi]
+
+# Takes position, velocity, and radius of two circles and returns velocity after collision.
+def circle_collision_with_circle(c1_xi, c1_vi, c1_r, c1_m, c2_xi, c2_vi, c2_r, c2_m):
+    difference_in_position = c1_xi - c2_xi
+    distance = numpy.linalg.norm(difference_in_position)
+    if distance <= c1_r + c2_r:
+        # m is mass, which is proportional to radius assuming the circles are the same density
+
+        c1_vf = c1_vi - (2 * c2_m) / (c1_m + c2_m) * numpy.dot((c1_vi - c2_vi),(c1_xi - c2_xi)) / distance**2 * (c1_xi - c2_xi)
+        c2_vf = c2_vi - (2 * c1_m) / (c1_m + c2_m) * numpy.dot((c2_vi - c1_vi),(c2_xi - c1_xi)) / distance**2 * (c2_xi - c1_xi)
+
+        return [c1_vf, c2_vf]
+    return [c1_vi, c2_vi]
+
+# Takes position, velocity, and FPS and returns final velocity
+def move_object(xi, vi, fps):
+    return xi + 1 / fps * vi
+
+
+main_loop = True
+
+while main_loop:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            main_loop = False
+
+    # Move the objects
+    circle1.position = move_object(circle1.position, circle1.velocity, FPS)
+    circle2.position = move_object(circle2.position, circle2.velocity, FPS)
+
+    # Check collisions with boundaries
+    circle1_boundary_collision_results = circle_collision_with_boundaries(circle1.position, circle1.velocity, circle1.radius, floor_bounce)
+    circle1.position = circle1_boundary_collision_results[0]
+    circle1.velocity = circle1_boundary_collision_results[1]
+    circle2_boundary_collision_results = circle_collision_with_boundaries(circle2.position, circle2.velocity, circle2.radius, floor_bounce)
+    circle2.position = circle2_boundary_collision_results[0]
+    circle2.velocity = circle2_boundary_collision_results[1]
+
+
+    # Check collisions with each other
+    circles_velocity = circle_collision_with_circle(circle1.position, circle1.velocity, circle1.radius, circle1.mass, circle2.position, circle2.velocity, circle2.radius, circle2.mass)
+    circle1.velocity = circles_velocity[0]
+    circle2.velocity = circles_velocity[1]
+
+    # Gravity
+    circle1.velocity[1] = circle1.velocity[1] + gravity / FPS
+    circle2.velocity[1] = circle2.velocity[1] + gravity / FPS
+
+    # Drag
+    circle1.velocity = circle1.velocity * (1 - drag / FPS)
+    circle2.velocity = circle2.velocity * (1 - drag / FPS)
+
+    # Draw the scene
+    screen.fill((255, 255, 255))
+    pygame.draw.circle(screen, (255, 0, 0), tuple(circle1.position), circle1.radius, width=4)
+    pygame.draw.circle(screen, (0, 0, 255), tuple(circle2.position), circle2.radius, width=4)
+    pygame.display.update()
+    clock.tick(FPS)
+
+pygame.quit()
