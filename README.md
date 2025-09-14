@@ -1,4 +1,4 @@
-# shiny-parakeet
+# ball-simulation
 Simulation of 2d Bouncing Balls in pygame
 
 Just a little project that animates bouncing balls on a screen :)
