@@ -1,5 +1,5 @@
 # ball-simulation
-Simulation of 2d Bouncing Balls in pygame
+Simulation of 2d Bouncing Balls using pygame. In Python 3.16.
 
 Just a little project that animates bouncing balls on a screen :)
 You can change initial radii, velocities, positions, and masses of two balls.
